@@ -52,7 +52,7 @@ GITHUB_TOKEN="YOUR_PERSONAL_ACCESS_TOKEN_HERE"
 <!-- end list -->
 
 ```bash
-python checker.py
+python script.py
 ```
 
 4.  The script will prompt you for the **GitHub username** you wish to scan.
