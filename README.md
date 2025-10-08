@@ -11,6 +11,14 @@ A Python script designed to scan public and private GitHub repositories for offe
   * **Full Logging:** Generates a detailed log file with absolute path for easy inspection of every detected instance (word, repository, and commit SHA).
   * **GitHub API Integration:** Authenticates using a GitHub Personal Access Token to handle rate limits and access private repositories (if permissions allow).
 
+## ✔ Implementations needed in the future
+Here lie the features that i will add later in the future when the 
+
+- [ ] Filter the commits by user instead of tagging every commit
+- [ ] Cleanup the repositories right after the checks
+- [ ] Log way less for reduced clutter
+- [ ] Count tags for same word instead of multiple across same commit
+
 ## 🚀 Setup and Installation
 
 ### 1\. Prerequisites
@@ -45,7 +53,7 @@ GITHUB_TOKEN="YOUR_PERSONAL_ACCESS_TOKEN_HERE"
 
 ## 💻 How to Run
 
-1.  Save the provided script as a Python file (e.g., `checker.py`).
+1.  Save the provided script as a Python file (e.g., `script.py`).
 2.  Make sure your `.env` file is in the same directory.
 3.  Run the script from your terminal:
 
