@@ -12,13 +12,15 @@ A Python script designed to scan public and private GitHub repositories for offe
   * **GitHub API Integration:** Authenticates using a GitHub Personal Access Token to handle rate limits and access private repositories (if permissions allow).
 
 ## ✔ Implementations needed in the future
-Here lie the features that i will add later in the future when the 
+Here lie the features that i will add later in the future when i decide to work on it again
 
 - [ ] Filter the commits by user instead of tagging every commit
 - [ ] Cleanup the repositories right after the checks
 - [ ] Log way less for reduced clutter
 - [ ] Count tags for same word instead of multiple across same commit
+- [ ] Turn this into a microservice to create a website
 
+      
 ## 🚀 Setup and Installation
 
 ### 1\. Prerequisites
