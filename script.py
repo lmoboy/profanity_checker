@@ -6,13 +6,13 @@ import logging
 from datetime import datetime
 import requests
 import re
+import sys
+import time
 
 # Combine profanity and severe slurs into one set for convenience in regex creation
 ALL_TERMS = set()
 
 profanity = {
-    "ass", 
-    "arse", 
     "arsehole", 
     "arsewad", 
     "asshole", 
@@ -94,6 +94,21 @@ load_dotenv()
 
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def github_headers():
     h = {"Accept": "application/vnd.github.v3+json"}
     if GITHUB_TOKEN:
@@ -121,12 +136,14 @@ def clone_repo(repo_clone_url, dest_path):
         # existing repo, update it
         try:
             # fetch latest
-            subprocess.run(["git", "fetch"], cwd=dest_path, check=False)
+            subprocess.run(["git", "fetch"], cwd=dest_path, check=False, 
+                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except Exception as e:
             logging.warning(f"Failed to git fetch in existing repo {dest_path}: {e}")
     else:
         # fresh clone
-        subprocess.run(["git", "clone", "--no-checkout", repo_clone_url, dest_path], check=True)
+        subprocess.run(["git", "clone", "--no-checkout", repo_clone_url, dest_path], 
+                      check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def run_git_in_repo(repo_path, args):
     try:
@@ -172,7 +189,7 @@ def scan_text_for_profanities(text, repo_name, commit_sha):
             
     return count, hit_severe
 
-def analyze_repo(repo_path, repo_api_url):
+def analyze_repo(repo_path, repo_api_url, github_user, current_repo_index, total_repos):
     resp = requests.get(repo_api_url + "/commits", headers=github_headers(), params={"per_page": 100})
     try:
         commits_json = resp.json()
@@ -192,6 +209,7 @@ def analyze_repo(repo_path, repo_api_url):
         }
     
     commit_shas = [c.get("sha") for c in commits_json if isinstance(c, dict) and c.get("sha")]
+    total_commits_in_repo = len(commit_shas)
 
     total_commits = 0
     commits_with_profanity = 0
@@ -200,8 +218,19 @@ def analyze_repo(repo_path, repo_api_url):
 
     repo_name = os.path.basename(repo_path)
 
-    for sha in commit_shas:
+    for commit_index, sha in enumerate(commit_shas):
         total_commits += 1
+        # Update progress display
+        display_progress(
+            github_user, 
+            repo_name, 
+            sha[:8],  # Show first 8 characters of commit hash
+            commit_index + 1, 
+            total_commits_in_repo, 
+            current_repo_index, 
+            total_repos
+        )
+        
         diff = run_git_in_repo(repo_path, ["show", sha, "--unified=0"])
         if not diff:
             continue
@@ -256,8 +285,10 @@ def full_scan_user(username, work_dir=None, log_dir=None):
     logging.info(f"Log file created at: {log_file_path}")
 
     repos = list_user_repos(username)
+    total_repos = len(repos)
     results = []
-    for repo in repos:
+    
+    for repo_index, repo in enumerate(repos):
         name = repo["name"]
         api_url = repo["url"]
         clone_url = repo["clone_url"]
@@ -269,10 +300,57 @@ def full_scan_user(username, work_dir=None, log_dir=None):
             logging.error(f"Error cloning repo {name}: {e}")
             continue
         logging.info(f"Analyzing repo {name} …")
-        r = analyze_repo(local_path, api_url)
+        r = analyze_repo(local_path, api_url, username, repo_index + 1, total_repos)
         results.append(r)
         
     return results, log_file_path
+
+def clear_screen():
+    """Clear the terminal screen"""
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+def display_progress(github_user, repository_name, repository_commit, repository_commit_index, repository_commit_total, current_repository_index, total_repositories):
+    """Display real-time progress in an ASCII box"""
+    # Calculate progress percentages
+    commit_progress = (repository_commit_index / repository_commit_total) * 100 if repository_commit_total > 0 else 0
+    total_progress = (current_repository_index / total_repositories) * 100 if total_repositories > 0 else 0
+    
+    # Create the progress display
+    lines = [
+        "Profanity checker v1.0.1",
+        f"Current user: {github_user}",
+        "",
+        f"Current repository: {repository_name}",
+        f"Current commit : {repository_commit}",
+        "",
+        f"Repository progress : {commit_progress:.1f}%",
+        f"User progress : {total_progress:.1f}%"
+    ]
+    
+    # Find the longest line to determine box width
+    max_width = max(len(line) for line in lines)
+    box_width = max_width + 4  # Add padding
+    
+    # Create the ASCII box
+    top_bottom = "┌" + "─" * (box_width - 2) + "┐"
+    middle = "│" + " " * (box_width - 2) + "│"
+    
+    # Clear screen and display
+    clear_screen()
+    print(top_bottom)
+    print(middle)
+    
+    for line in lines:
+        # Center the text within the box
+        padding = (box_width - 2 - len(line)) // 2
+        left_padding = padding
+        right_padding = box_width - 2 - len(line) - left_padding
+        centered_line = "│" + " " * left_padding + line + " " * right_padding + "│"
+        print(centered_line)
+    
+    print(middle)
+    print("└" + "─" * (box_width - 2) + "┘")
+    sys.stdout.flush()
 
 def print_results(results, log_file_path):
     print("\n--- Scan Results ---")
