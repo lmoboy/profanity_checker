@@ -128,11 +128,3 @@ def create_profanity_regex(terms):
     pattern = '|'.join(re.escape(term) for term in terms)
     return re.compile(f"({pattern})")
 ```
-
------
-
-## ⚠️ Disclaimer on "Acceptability"
-
-The script calculates an `acceptability_level` based on your original logic: `acceptability = profanity_level * 0.7`.
-
-**Note:** This calculation is **inversely proportional** to what "acceptability" usually implies (a higher profanity level results in a higher acceptability score). You may wish to adjust this metric based on your specific grading or policy requirements. A common alternative is a simple deduction: `acceptability = 100.0 - (profanity_level * weight)`.
