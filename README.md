@@ -1,3 +1,4 @@
+i kinda shot myself in the foot with this one 💀
 # 🔍 GitHub Profanity & Slur Checker
 
 A Python script designed to scan public and private GitHub repositories for offensive language, including profanities and racial/derogatory slurs, across commit history. This tool utilizes **Regular Expressions (Regex)** for highly precise detection of embedded or unseparated terms within long strings (e.g., detecting "shit" within "thisisashitstring").
