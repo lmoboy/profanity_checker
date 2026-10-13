@@ -1,0 +1,5 @@
+# optional — script runs on stdlib alone.
+# Install for better UX / private repos / PNG graphs:
+requests>=2.28
+python-dotenv>=1.0
+matplotlib>=3.5
