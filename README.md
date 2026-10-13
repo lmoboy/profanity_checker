@@ -1,95 +1,30 @@
-# 🔍 GitHub Profanity & Slur Checker
+# profanity_checker
 
-Scan a GitHub user's **full commit history** for profanity vs severe slurs —
-attributed to *that user only* — with a terminal graph at the end.
-
-## ✨ What it does (v2)
-
-* **True history scan:** clones each repo (full history, all branches) and
-  enumerates commits locally via `git log --all`. No 100-commit API cap.
-* **User attribution:** only commits where the target matches
-  author/committer name or email are scored. Others are counted as
-  `skipped_other_authors`, never blamed on the user.
-* **Added-lines-only:** scans commit messages + lines the user *added*
-  (`+` lines). Deletions and context from other authors are ignored.
-* **Robust matching:**
-  * word-boundary regex — `cockpit`, `dictionary`, `peacock`,
-    `thisisashitstring` do **not** flag;
-  * leet decoding — `sh1t`, `b1tch`, `@sshole`, `shiiit` flag as obfuscated;
-  * separator-tolerant fuzzy for severe slurs —
-    `n.i.g.g.e.r`, `f@gg0t` flag as obfuscated severe.
-* **Sane scoring:** `flagged% = flagged_commits / your_commits * 100`,
-  `acceptability = 100 - flagged%` (0 if any severe hit).
-  Verdicts: `CLEAN / LOW / MODERATE / HIGH / SEVERE / NO-DATA`.
-* **Low clutter:** max 5 log lines per commit, single-line progress
-  (no screen-clearing box), clones deleted after each repo unless `--keep`.
-* **Graph + artifacts:** ASCII bar graph in-terminal, optional PNG
-  (`--png-out`, needs `matplotlib`), JSON results (`--json-out`), full log.
-
-Word-list hygiene: `sex`, `hitler`/`hittler` (not slurs, massive FP) and
-`niggle` (legit English word) were removed. `retard`/`retarded` are
-classified severe.
-
-## ✔ Original todo — all fulfilled
-
-- [x] Filter the commits by user instead of tagging every commit → author/committer attribution (`skipped_other_authors`)
-- [x] Cleanup the repositories right after the checks → clones deleted unless `--keep`
-- [x] Log way less for reduced clutter → max 5 lines per commit, single-line progress, `--quiet`
-- [x] Count tags for same word instead of multiple across same commit → per-term counters + top-terms graph
-- [ ] Turn this into a microservice to create a website → not built (CLI only by decision); `--json-out` is the integration point if ever needed
-
-## 🚀 Setup
-
-Needs **Python 3.10+** and **git**. Zero *required* pip deps (stdlib only).
-
-```bash
-pip install -r requirements.txt   # optional: requests, python-dotenv, matplotlib
-```
-
-GitHub token (for private repos + higher rate limits). Create `.env`:
+Scans a GitHub user's commit history for profanity and slurs. Every hit is
+attributed to the person who wrote it, and the run ends with a summary graph.
 
 ```
-GITHUB_TOKEN="YOUR_PERSONAL_ACCESS_TOKEN_HERE"
-```
+$ python3 script.py Alice --path /tmp/readme-demo --no-color
+Scanning local repo…
 
-Token needs `repo` scope for private repos.
-
-## 💻 How to run
-
-```bash
-python script.py octocat
-python script.py octocat --include-forks --max-repos 20 --keep
-python script.py --path ./my-local-repo --help
-python script.py Alice --path /tmp/demo --no-color
-```
-
-Flags: `--max-repos N`, `--include-forks`, `--include-archived`,
-`--exclude '*-fork'` (repeatable), `--work-dir`, `--log-dir`,
-`--keep`, `--json-out out.json`, `--png-out graph.png`,
-`--no-graph`, `--no-color`, `--quiet`, `--path LOCAL_REPO`.
-
-## Example output
-
-```
 ┌──────────────────────────────────────────────────────────────────┐
-│                    Profanity scan — @octocat                     │
-│                        verdict: MODERATE                         │
+│                     Profanity scan — @Alice                      │
+│                          verdict: HIGH                           │
 ├──────────────────────────────────────────────────────────────────┤
-  repos scanned ...... 2
-  your commits ....... 13
-  flagged commits .... 1 (7.69%)
-  total hits ......... 3  (severe: 0, profanity: 3)
+  repos scanned ...... 1
+  your commits ....... 2
+  flagged commits .... 1 (50.00%)
+  total hits ......... 1  (severe: 0, profanity: 1)
 
   Per-repo flagged-commit rate (your commits only):
-    my-repo                ████░░░░░░░░░░░░░░░░░░░░░░░░  12.50%  [1/8] MODERATE
-    clean-repo             ░░░░░░░░░░░░░░░░░░░░░░░░░░░░   0.00%  [0/5] CLEAN
+    readme-demo            ██████████████░░░░░░░░░░░░░░  50.00%  [1/2] HIGH
 
   Severity breakdown:
     severe    ░░░░░░░░░░░░░░░░░░░░░░░░░░░░     0 (  0.0%)
-    profanity ████████████████████████████     3 (100.0%)
+    profanity ████████████████████████████     1 (100.0%)
 
   Top flagged terms:
-    shit                 ██████████████████████     3  (profanity)
+    shit                 ██████████████████████     1  (profanity)
 
   ⚠️  Some profanity found — see log for commit SHAs + snippets.
 └──────────────────────────────────────────────────────────────────┘
@@ -97,38 +32,154 @@ Flags: `--max-repos N`, `--include-forks`, `--include-archived`,
 --- Scan Results ---
 repository | flagged_% | acceptability | hits | severe | your_commits | link
 ----------------------------------------------------------------------------------------------------
-my-repo | 12.50% | 87.50% | 3 | 0 | 8 | https://github.com/octocat/my-repo
+readme-demo | 50.00% | 50.00% | 1 | 0 | 2 | /tmp/readme-demo
 ----------------------------------------------------------------------------------------------------
-Total hits: 3 | Repos: 2 | Your commits: 13
+Total hits: 1 | Repos: 1 | Your commits: 2
 
-Log:  /tmp/ghscan_octocat_xxx/logfile_20261013_102749.log
-JSON: /tmp/ghscan_octocat_xxx/results_20261013_102749.json
+Log:  /tmp/ghscan_Alice_tmo2566j/logfile_20261013_111949.log
+JSON: /tmp/ghscan_Alice_tmo2566j/results_20261013_111949.json
 Done.
 ```
 
-## 🧹 Scrubbing history (`scrub.py`)
+## What it does
 
-Rewrites branch history so flagged terms become a neutral word
-(default `test`, override with `--word dev`):
+`script.py` clones each of the user's repos with full history and walks
+the local git log, so there is no 100-commit API cap. Only commits whose
+author or committer matches the target count toward that user. Everything
+else is reported as `skipped_other_authors`.
+
+Only commit messages and added (`+`) lines are scanned. Lines the user
+deleted, and context written by other people, are ignored.
+
+Matching is word-boundary based: `cockpit`, `dictionary` and `Essex` do
+not flag. Leet spellings (`sh1t`, `b1tch`) and stretched words (`shiiit`)
+flag as obfuscated. Separator tricks (`n.i.g.g.e.r`, `f@gg0t`) flag as
+obfuscated severe.
+
+`scrub.py` rewrites a branch so flagged terms become `test`:
+
+```
+$ python3 scrub.py --path /tmp/readme-demo
+Before: 1 total hits on master (all authors).
+Dry-run: cloning to /tmp/scrub_dryrun_agh2z8cx …
+Dry-run would rewrite 1 commit(s). Before=1 After=0.
+  e556d99f -> 7b613167 files=['f.txt']
+No changes made to the original. Re-run with --apply.
+```
+
+Dry-run is the default and touches nothing. `--apply` creates a
+`backup/pre-scrub-*` branch first. Authors and dates are preserved.
+
+## Tradeoffs
+
+Do not use this as proof that a history is clean. It is a fixed word list
+with pattern tricks, not a content moderator. Sarcasm, slurs in other
+languages, and images or audio are out of scope.
+
+Do not rewrite history you share with others without telling them. Anyone
+who pulled the old history has to re-clone after a force-push.
+
+Force-push does not delete the old commits from GitHub immediately. Old
+SHAs can stay reachable by direct URL until GitHub's garbage collection
+gets to them.
+
+`scrub.py` refuses branches with merge commits. Histories with merges need
+the `censor_filter.py` + `git filter-branch` path instead (see Usage).
+
+## Install
+
+Source only. Needs git and Python 3 (tested on 3.14.7).
 
 ```bash
-python scrub.py --path /path/to/repo                    # dry-run (safe, default)
-python scrub.py --path /path/to/repo --apply            # rewrite + backup branch
-python scrub.py --path /path/to/repo --apply --push     # + force-with-lease push
-python scrub.py --path /path/to/repo --severe-only      # censor severe slurs only
+git clone https://github.com/lmoboy/profanity_checker.git
+cd profanity_checker
+pip install -r requirements.txt   # optional: requests, python-dotenv, matplotlib
 ```
 
-Linear history only, refuses on dirty trees/merges, keeps authors/dates,
-verifies zero hits before telling you to push. Undo via `backup/pre-scrub-*`.
+Without the optional packages the scripts still run on the standard
+library. `requests` only adds nicer GitHub API handling, `matplotlib`
+only adds PNG graph export.
 
-## ⚙️ Customising lists
+## Usage
 
-Edit the sets at the top of `script.py` (lowercase):
-
-```python
-PROFANITY = {"asshole", ...}
-SEVERE_SLURS = {"nigger", "chink", ...}
+```bash
+python3 script.py --help
+python3 script.py octocat
+python3 script.py octocat --include-forks --max-repos 20
+python3 script.py Alice --path ./my-local-repo --no-color
+python3 scrub.py --path ./my-local-repo
+python3 scrub.py --path ./my-local-repo --apply
+git push --force-with-lease origin main
 ```
 
-Regexes, fuzzy patterns, and the graph rebuild automatically. Longest-first
-alternation prevents `cock` shadowing `cock-sucker`.
+`script.py` prompts for a username if none is given. A `GITHUB_TOKEN`
+in a `.env` file raises API limits and unlocks private repos.
+
+Histories with merges (where `scrub.py` refuses to run):
+
+```bash
+export FILTER_BRANCH_SQUELCH_WARNING=1
+git filter-branch --force \
+  --tree-filter 'python3 censor_filter.py --tree .' \
+  --msg-filter 'python3 censor_filter.py --msg' \
+  -- --all
+```
+
+## Verify
+
+There is no test suite. The check that exists is a byte-compile of all
+three scripts:
+
+```bash
+python3 -m py_compile script.py scrub.py censor_filter.py
+```
+
+It prints nothing on success.
+
+## Configuration
+
+One file, in the repo directory:
+
+```
+# .env file
+GITHUB_TOKEN="YOUR_PERSONAL_ACCESS_TOKEN_HERE"
+```
+
+The token needs the `repo` scope for private repositories.
+
+## Troubleshooting
+
+`[Errno 2] No such file or directory: 'clone'` on every repo. The clone
+helper called `clone` without the `git` prefix. Fixed in the current
+`script.py`; pull and re-run.
+
+`scrub.py` says the branch has merge commits and quits. That is
+intentional. Use the `filter-branch` + `censor_filter.py` commands from
+Usage, which preserve merge topology.
+
+`git push --force-with-lease` rejected with `stale info` after a
+`filter-branch` run. `filter-branch` rewrites the local `origin/main`
+tracking ref, which breaks the lease check. Run `git fetch origin` first
+so the lease compares against the real remote, then push again.
+
+## Goals and alternatives
+
+The goal is a small audit tool for personal repos: find your own bad
+commits, rewrite them, show a graph. It is not a moderation service and
+not a pre-commit hook.
+
+Alternatives: `git-filter-repo` and BFG Repo-Cleaner rewrite history
+faster and handle every topology, but you write your own replacement
+rules. GitHub push protection blocks secrets going forward but does not
+scan past commits for language.
+
+## Roadmap
+
+The original todo list for this repo, and where each item stands:
+
+- [x] Filter commits by user instead of tagging every commit
+- [x] Clean up the cloned repositories right after the checks
+- [x] Log less (per-commit cap, `--quiet`)
+- [x] Per-term counts and top-terms graph
+- [ ] Microservice/website — deliberately not built; the CLI stays, and
+  `--json-out` is the integration point if one is ever needed
